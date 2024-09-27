@@ -7,50 +7,74 @@ TODO: Ability to specify file format
 TODO: Quicker way to run the command, Pull url from clipboard?
 TODO: Variable image size selection
 """
+# TODO: Rebuild as a class
+# TODO: move all nested cleaning steps to their own functions
 
 
 def sizes_page_redirect(url):
-    print("/".join(url.split("/")[0:6]) + "/sizes")
     return "/".join(url.split("/")[0:6]) + "/sizes"
+
+
+def parse_image_link(link):
+    return str(link).split('"')[1]
+
+
+def return_largest_size_number_key(d):
+    return max(d, key=d.get)
+
+
+def isolate_image_title(soup):
+    title_obj_string = str(soup.find_all("title"))
+    return title_obj_string.split(" | ")[1]
+
+
+def clean_image_title(title_string):
+    return "_".join(title_string.split(" "))
+
+
+def isolate_image_link(soup):
+    size_images = soup.find(id="allsizes-photo")
+
+    image_list = size_images.find_all("img")
+
+    return parse_image_link(image_list[0])
+
+
+def parse_image_size(image_link):
+    image_size_section = image_link.split(">")[1].split(" ")
+    if len(image_size_section) < 2:
+        return 0
+    elif "K" in image_size_section[1]:
+        return 1000000
+    else:
+        return int(image_size_section[1].split("<")[0])
 
 
 def identify_largest_version(html):
     soup = BeautifulSoup(html, "html.parser")
 
-    # print(soup.find("ol", "sizes-list").find_next(text=True).strip())
-    # print(soup.find("ol", "sizes-list").strip())
     size_images = soup.find(id="all-sizes-header")
-    # print(size_images)
-    largest_image = size_images.find_all("li")[-2]  # [-1]  # .get_text() # .strip()
-    # print(type(largest_image))
-    # print(largest_image)
+    image_size_options = size_images.find_all("a")
 
-    image_char = str(largest_image).split("sizes/")
-    # print(image_char)
-    return image_char[1][0]
+    image_size_links = {
+        parse_image_link(str(i)): parse_image_size(str(i))
+        for i in image_size_options
+        if "sizes" in str(i)
+    }
+
+    largest_image_key = return_largest_size_number_key(image_size_links)
+
+    image_char = str(largest_image_key).split("sizes/")
+
+    return image_char[1]
 
 
-def isolate_image_link(html):
+def return_image_data(html):
     soup = BeautifulSoup(html, "html.parser")
+    image_title = clean_image_title(isolate_image_title(soup))
+    largest_image_link = isolate_image_link(soup)
 
-    # print(soup.find("ol", "sizes-list").find_next(text=True).strip())
-    # print(soup.find("ol", "sizes-list").strip())
-    size_images = soup.find(id="allsizes-photo")
-    # print(size_images)
-    largest_image = str(
-        size_images.find_all("img")[0]
-    )  # [-1]  # .get_text() # .strip()
-    # print(type(largest_image))
-    print(largest_image)
-    largest_image_2 = largest_image.split('"')[1]
-    largest_image_3 = largest_image.split("//")[1]
-    print(largest_image_3)
-
-    ##image_char = str(largest_image).split("sizes/")
-
-    ##return image_char[1][0]
-
-    return largest_image_3
+    return largest_image_link, image_title
 
 
 def isolate_image_object(html):
@@ -70,13 +94,14 @@ def extract_filename(obj):
 
 
 def save_image(link, save_path, filename):
-    request.urlretrieve(f"http://{link}", f"{save_path}/{filename}.jpg")
+    request.urlretrieve(link, f"{save_path}/{filename}.jpg")
 
 
 @click.command()
 @click.option(
     "--url",
-    default="https://www.flickr.com/photos/68689268@N07/7846550050/in/gallery-134638499@N05-72157721540942226/",
+    # default="https://www.flickr.com/photos/68689268@N07/7846550050/in/gallery-134638499@N05-72157721540942226/",
+    default="https://www.flickr.com/photos/161038124@N08/54016136594/in/pool-legominifigs/",
     prompt="What URL are you saving?",
 )
 @click.option(
@@ -87,30 +112,18 @@ def save_image(link, save_path, filename):
 def image_download(url, save_path):
     """Saves the image from a given Flickr page to the location of your choice"""
     sizes_page = sizes_page_redirect(url)
-    resource = request.urlopen(sizes_page)
-    # print(resource)
+
+    resource = request.urlopen(sizes_page + "/sq/")
+
     largest_img_char = identify_largest_version(resource)
 
     largest_image_link = sizes_page + "/" + largest_img_char
-    print(largest_image_link)
 
     largest_resource = request.urlopen(largest_image_link)
 
-    image_dl_link = isolate_image_link(largest_resource)
+    image_dl_link, image_title = return_image_data(largest_resource)
 
-    save_image(image_dl_link, save_path, filename="this_is_the_image")
-
-    # <div id="allsizes-photo">
-    # 	<img src="https://live.staticflickr.com/7280/7846550050_550d2d50e8_k.jpg">
-    # </div>
-
-    """
-    html = resource.read().decode(resource.headers.get_content_charset())
-    image_object = isolate_image_object(html)  
-    image_link = extract_image_link(image_object)
-    file_name = extract_filename(image_object)
-
-    """
+    save_image(image_dl_link, save_path, filename=image_title)
 
 
 if __name__ == "__main__":
