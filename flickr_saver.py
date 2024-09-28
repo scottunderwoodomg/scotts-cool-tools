@@ -1,3 +1,4 @@
+import re
 from urllib import request
 from bs4 import BeautifulSoup
 import click
@@ -15,8 +16,8 @@ def sizes_page_redirect(url):
     return "/".join(url.split("/")[0:6]) + "/sizes"
 
 
-def parse_image_link(link):
-    return str(link).split('"')[1]
+def parse_image_link(url):
+    return str(url).split('"')[1]
 
 
 def return_largest_size_number_key(d):
@@ -29,7 +30,7 @@ def isolate_image_title(soup):
 
 
 def clean_image_title(title_string):
-    return "_".join(title_string.split(" "))
+    return "_".join(re.sub(r"[^a-zA-Z0-9\s]", "", title_string).split(" "))
 
 
 def isolate_image_link(soup):
@@ -40,8 +41,8 @@ def isolate_image_link(soup):
     return parse_image_link(image_list[0])
 
 
-def parse_image_size(image_link):
-    image_size_section = image_link.split(">")[1].split(" ")
+def parse_image_size(image_url):
+    image_size_section = image_url.split(">")[1].split(" ")
     if len(image_size_section) < 2:
         return 0
     elif "K" in image_size_section[1]:
@@ -64,33 +65,24 @@ def identify_largest_version(html):
 
     largest_image_key = return_largest_size_number_key(image_size_links)
 
-    image_char = str(largest_image_key).split("sizes/")
-
-    return image_char[1]
+    return str(largest_image_key).split("sizes/")[1]
 
 
-def return_image_data(html):
-    soup = BeautifulSoup(html, "html.parser")
+def return_image_data(link):
+    largest_resource = request.urlopen(link)
+    soup = BeautifulSoup(largest_resource, "html.parser")
     image_title = clean_image_title(isolate_image_title(soup))
     largest_image_link = isolate_image_link(soup)
 
     return largest_image_link, image_title
 
 
-def isolate_image_object(html):
-    image_class = html.split(
-        "view photo-well-media-scrappy-view requiredToShowOnServer"
-    )[1]
-    return image_class.split('src="//')[1]
+def identify_largest_image_version_url(url):
+    resource = request.urlopen(url + "/sq/")
 
+    largest_img_char = identify_largest_version(resource)
 
-def extract_image_link(obj):
-    return obj.split('"')[0]
-
-
-def extract_filename(obj):
-    file_name = obj.split('alt="')[1]
-    return file_name.split('"')[0].replace(" ", "_")
+    return url + "/" + largest_img_char
 
 
 def save_image(link, save_path, filename):
@@ -113,17 +105,11 @@ def image_download(url, save_path):
     """Saves the image from a given Flickr page to the location of your choice"""
     sizes_page = sizes_page_redirect(url)
 
-    resource = request.urlopen(sizes_page + "/sq/")
+    largest_image_link = identify_largest_image_version_url(sizes_page)
 
-    largest_img_char = identify_largest_version(resource)
+    image_dl_link, image_title = return_image_data(largest_image_link)
 
-    largest_image_link = sizes_page + "/" + largest_img_char
-
-    largest_resource = request.urlopen(largest_image_link)
-
-    image_dl_link, image_title = return_image_data(largest_resource)
-
-    save_image(image_dl_link, save_path, filename=image_title)
+    save_image(image_dl_link, save_path, image_title)
 
 
 if __name__ == "__main__":
