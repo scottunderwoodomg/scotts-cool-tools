@@ -1,0 +1,7 @@
+{
+    "local_paths": {
+        "file_save_dir": "path/where/you/want/stuff/saved",
+        "user": "name",
+        "other_path": "path"
+    }
+}
