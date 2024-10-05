@@ -43,6 +43,11 @@
 
 ## How To Use
 
+## Setup
+
+1. Copy `config.template.yaml` to `config.yaml`.
+2. Edit `config.yaml` and fill in the required configuration values.
+
 ## Download
 
 <!--
