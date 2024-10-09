@@ -1,7 +1,7 @@
 import re
 from urllib import request
 from bs4 import BeautifulSoup
-from lib.config_loader import load_config
+from config_loader import load_config
 import click
 
 """
