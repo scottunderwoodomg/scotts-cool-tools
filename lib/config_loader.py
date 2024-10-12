@@ -9,4 +9,5 @@ def load_config(config_path="config.json"):
     return config
 
 
-config = load_config()
+def get_path(requested_path):
+    return load_config()["local_paths"][requested_path]
