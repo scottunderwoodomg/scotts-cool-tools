@@ -1,4 +1,6 @@
 import os
+import sys
+
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -80,7 +82,19 @@ class NoteCreator:
         )
 
 
-@click.command()
+# TODO: move this into its own util that runs click across the project with a common syntax (Clickr?)
+# TODO: Add customizing / setting up the various standard command prompts part of the setup instructions, provide suggestion
+# TODO: Add logic for handling *args (import as $@ and then parse the list in clickr)
+def deactivate_prompts(ctx, param, value):
+    if value:
+        for p in ctx.command.params:
+            if isinstance(p, click.Option) and p.prompt is not None:
+                p.prompt = None
+    return value
+
+
+""" @click.command()
+@click.option('-q/--quiet', default=False, is_eager=True, expose_value=False, callback=deactivate_prompts)
 @click.option(
     "--requested_template",
     default="quick_note",
@@ -90,7 +104,10 @@ class NoteCreator:
     "--file_name",
     default="",
     prompt="What should the note be called?",
-)
+) 
+"""
+
+
 def run_notato(requested_template: str, file_name: str):
     """Saves the image from a given Flickr page to the location
     of your choice
@@ -100,4 +117,23 @@ def run_notato(requested_template: str, file_name: str):
 
 
 if __name__ == "__main__":
-    run_notato()
+    sys.argv[1]
+    run_notato(sys.argv[1], sys.argv[2])
+
+
+"""
+def deactivate_prompts(ctx, param, value):
+    if value:
+        for p in ctx.command.params:
+            if isinstance(p, click.Option) and p.prompt is not None:
+                p.prompt = None
+    return value
+
+@click.command()
+@click.option('-q/--quiet', default=False, is_eager=True, expose_value=False, callback=deactivate_prompts)
+@click.option('--count', prompt='How many times?' default=1, help='Number of greetings.')
+@click.option('--name', prompt='Your name?', help='The person to greet.', default='computer')
+def hello(count, name):
+    for x in range(count):
+        click.echo('Hello %s!' % name)
+"""
