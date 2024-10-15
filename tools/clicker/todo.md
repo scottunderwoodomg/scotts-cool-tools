@@ -4,3 +4,40 @@
 
 toolbox.sh will need to be updated to run clickr and have it invoke the command in question
 OR Clickr will need to be imported from the tools directory and run as a wrapper in all of the __main__ commands
+
+
+```
+def deactivate_prompts(ctx, param, value):
+    if value:
+        for p in ctx.command.params:
+            if isinstance(p, click.Option) and p.prompt is not None:
+                p.prompt = None
+    return value
+
+
+""" @click.command()
+@click.option('-q/--quiet', default=False, is_eager=True, expose_value=False, callback=deactivate_prompts)
+@click.option(
+    "--requested_template",
+    default="quick_note",
+    prompt="What kind of note are you creating?",
+)
+@click.option(
+    "--file_name",
+    default="",
+    prompt="What should the note be called?",
+) 
+"""
+```
+
+
+
+
+```
+$@
+
+import sys
+
+sys.argv[1], sys.argv[2]
+
+```
