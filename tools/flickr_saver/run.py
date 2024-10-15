@@ -1,7 +1,7 @@
 import re
 from urllib import request
 from bs4 import BeautifulSoup
-from lib.config_loader import load_config
+from config_loader import get_path
 import click
 
 """
@@ -147,7 +147,7 @@ def save_image(link, save_path, filename):
 )
 @click.option(
     "--save_path",
-    default=load_config()["local_paths"]["file_save_dir"],
+    default=get_path("file_save_dir"),
     prompt="Where do you want this saved?",
 )
 def image_download(url: str, save_path: str):

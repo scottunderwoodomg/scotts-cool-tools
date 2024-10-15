@@ -1,6 +1,8 @@
 {
     "local_paths": {
         "file_save_dir": "path/where/you/want/stuff/saved",
+        "sct_home": "path/where/sct/lives/locally",
+        "text_editor": "path/to/your/preferred/text/editor",
         "user": "name",
         "other_path": "path"
     }
