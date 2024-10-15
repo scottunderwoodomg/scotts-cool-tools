@@ -9,4 +9,4 @@ TOOL_NAME=$1
 SCRIPT_PATH="tools/$TOOL_NAME/run.py"
 
 # Activate the virtual environment, update pythonpath and run the script
-source "$VENV_DIR/bin/activate" && PYTHONPATH=$PYTHONPATH:$BASE_DIR && python "$BASE_DIR/$SCRIPT_PATH" $@
+source "$VENV_DIR/bin/activate" && PYTHONPATH=$PYTHONPATH:$BASE_DIR && python "$BASE_DIR/$SCRIPT_PATH"
