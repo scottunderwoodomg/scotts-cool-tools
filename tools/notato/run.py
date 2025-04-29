@@ -46,7 +46,7 @@ class NoteCreator:
         dynamic_values = {
             # "{{username}}": "John Doe",
             "{{ date }}": datetime.now().strftime("%Y-%m-%d"),
-            "{{ time }}": datetime.now().strftime("%Y-%m-%d"),
+            "{{ time }}": datetime.now().strftime("%H:%M"),
             "{{ topic }}": self.file_name,
         }
 
