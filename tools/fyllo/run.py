@@ -22,19 +22,17 @@ Potential future improvements:
 
 class Fyllo:
     def __init__(self, pattern_match, replacement):
-        # self.sct_home = get_path("sct_home")
+        self.sct_home = get_path("sct_home")
         # self.source_dir = source_dir
         # self.target_dir = os.path.join(os.getenv("HOME"), target_dir)
         # self.retain_source = retain_source
         # self.ignore_patterns = [".DS_Store"]  # Placeholder solution
-        # self.ignore_section_cnt = 2  # Placeholder solution
-        # self.source_file_index = self.build_source_file_index()
 
         self.pattern_match = pattern_match
         self.replacement = replacement
         self.search_dir = os.getcwd()
 
-    def run_phyllo_rename(self):
+    def run_fyllo_rename(self):
         """Runs the following consolidation logic steps:
         1. Identifies the common directory hierarchy under the source's top-level subdirectories
         2. Creates the user-suplied target directory if it does not exist
@@ -42,6 +40,15 @@ class Fyllo:
         4. Either copies or moves files from the source to the target
         """
         self.rename_files_in_directory()
+
+    def run_fyllo_delete(self):
+        """Runs the following consolidation logic steps:
+        1. Identifies the common directory hierarchy under the source's top-level subdirectories
+        2. Creates the user-suplied target directory if it does not exist
+        3. Recreates the source's common directory hierarchy under the user-suplied target directory
+        4. Either copies or moves files from the source to the target
+        """
+        self.delete_files_matching_pattern()
 
     def rename_files_in_directory(self):
         """
@@ -61,8 +68,50 @@ class Fyllo:
                 print(f"Renaming: {filename} → {new_name}")
                 os.rename(old_path, new_path)
 
+    def delete_files_matching_pattern(self):
+        """
+        Delete files in the given self.search_dir if their names match the regex self.pattern_match.
+        Requests user review and confirmation before proceding with any deletion.
+
+        Args:
+            self.search_dir (str): The path to the self.search_dir containing files to rename.
+            self.pattern_match (str): The regex self.pattern_match to match filenames.
+        """
+        file_match_list = []
+        for filename in os.listdir(self.search_dir):
+            # print(filename)
+            match = re.match(self.pattern_match, filename)
+            # print(match)
+            if match:
+                file_match_list.append(filename)
+                # print(match)
+
+        print("Files to be deleted:")
+        for file in file_match_list:
+            print("- ", file)
+        print("")
+        deletion_plan_confirmed = False
+        while not deletion_plan_confirmed:
+            delete_confirmation = input(
+                "Confirm that you want to delete these files [Y/N]: "
+            )
+            if delete_confirmation == "Y":
+                deletion_plan_confirmed = True
+                for file in file_match_list:
+                    os.remove(file)
+            elif delete_confirmation == "N":
+                deletion_plan_confirmed = True
+                pass
+            else:
+                print("Not A Valid Option")
+
 
 @click.command()
+@click.option(
+    "--fyllo_operation",
+    # default=".",  # Current default assumes that you are runnning the script from the source directory
+    prompt="Are we renaming or deleting? [rename, delete]",
+)
 @click.option(
     "--pattern_match",
     # default=".",  # Current default assumes that you are runnning the script from the source directory
@@ -73,10 +122,15 @@ class Fyllo:
     # default="",  # Current default is related to local testing
     prompt="What should we call them?",
 )
-def run_phyllo(pattern_match: str, replacement: str):
+def run_fyllo(fyllo_operation: str, pattern_match: str, replacement: str):
     fyllo = Fyllo(pattern_match=pattern_match, replacement=replacement)
-    fyllo.run_phyllo_rename()
+    if fyllo_operation == "rename":
+        fyllo.run_fyllo_rename()
+    elif fyllo_operation == "delete":
+        fyllo.run_fyllo_delete()
+    else:
+        print("Unsuported operation")
 
 
 if __name__ == "__main__":
-    run_phyllo()
+    run_fyllo()
