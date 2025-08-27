@@ -33,21 +33,11 @@ class Fyllo:
         self.search_dir = os.getcwd()
 
     def run_fyllo_rename(self):
-        """Runs the following consolidation logic steps:
-        1. Identifies the common directory hierarchy under the source's top-level subdirectories
-        2. Creates the user-suplied target directory if it does not exist
-        3. Recreates the source's common directory hierarchy under the user-suplied target directory
-        4. Either copies or moves files from the source to the target
-        """
+        """Runs the following:"""
         self.rename_files_in_directory()
 
     def run_fyllo_delete(self):
-        """Runs the following consolidation logic steps:
-        1. Identifies the common directory hierarchy under the source's top-level subdirectories
-        2. Creates the user-suplied target directory if it does not exist
-        3. Recreates the source's common directory hierarchy under the user-suplied target directory
-        4. Either copies or moves files from the source to the target
-        """
+        """Runs the following:"""
         self.delete_files_matching_pattern()
 
     def rename_files_in_directory(self):
