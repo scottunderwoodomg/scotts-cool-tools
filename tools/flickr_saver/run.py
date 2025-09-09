@@ -1,4 +1,5 @@
 import re
+import os
 from urllib import request
 from bs4 import BeautifulSoup
 from config_loader import get_path
@@ -52,7 +53,34 @@ def clean_image_title(title_string: str) -> str:
     - Changing all letters to lowercase
     - Replacing spaces with underscores
     """
-    return "_".join(re.sub(r"[^a-zA-Z0-9\s]", "", title_string).split(" ")).lower()
+    return "-".join(re.sub(r"[^a-zA-Z0-9\s]", "", title_string).split(" ")).lower()
+
+
+def increment_duplicates(cleaned_title: str) -> str:
+    """ """
+    matched = False
+    current_max = 0
+    for filename in os.listdir(get_path("file_save_dir")):
+        # print(filename)
+        match = re.match(cleaned_title, filename)
+        # print(match)
+        if match:
+            matched = True
+            last_char = cleaned_title[len(cleaned_title) - 1]
+            if last_char.isdigit():
+                current_max = max(current_max, int(last_char))
+            # print(match)
+
+    if matched:
+        return "_".join([cleaned_title, str(current_max + 1)])
+    else:
+        return cleaned_title
+
+
+def prepare_image_title(title_string: str) -> str:
+    cleaned_title = clean_image_title(title_string)
+
+    return increment_duplicates(cleaned_title)
 
 
 def isolate_image_link(soup) -> str:
@@ -114,7 +142,7 @@ def return_image_data(link: str) -> tuple:
     """
     largest_resource = request.urlopen(link)
     soup = BeautifulSoup(largest_resource, "html.parser")
-    image_title = clean_image_title(isolate_image_title(soup))
+    image_title = prepare_image_title(isolate_image_title(soup))
     largest_image_link = isolate_image_link(soup)
 
     return largest_image_link, image_title
