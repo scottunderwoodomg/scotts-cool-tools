@@ -77,7 +77,8 @@ class FlickrSaver:
             match = re.match(cleaned_title, filename)
             if match:
                 matched = True
-                last_char = cleaned_title[len(cleaned_title) - 1]
+                filename_ext_removed = filename.split(".")[0]
+                last_char = filename_ext_removed[len(filename_ext_removed) - 1]
                 if last_char.isdigit():
                     current_max = max(current_max, int(last_char))
 
