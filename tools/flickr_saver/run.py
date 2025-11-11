@@ -170,6 +170,7 @@ class FlickrSaver:
         and under the provided filename
         """
         request.urlretrieve(link, f"{self.save_path}/{filename}.jpg")
+        print(f" - {filename}.jpg saved to {self.save_path}")
 
 
 @click.command()
