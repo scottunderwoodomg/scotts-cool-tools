@@ -51,7 +51,9 @@ class DriveConsolidator:
         self.common_dir_hierarchy = self.produce_common_dir_hierarchy()
         self.create_path_if_not_exist(self.target_dir)
         self.replicate_common_dirs(self.common_dir_hierarchy)
+        print("Beginning file transfer")
         self.run_file_transfer()
+        print("File transfer complete")
 
     def is_ignored(self, root, file) -> bool:
         """Placeholder method that is used to ignore certain files under the source directory
@@ -135,6 +137,7 @@ class DriveConsolidator:
         - IF NOT self.retain_source -> move the file from src to tgt
         """
         for file in self.create_src_tgt_sets():
+            print(f"Copying file: {file["src"]}")
             if self.retain_source:
                 shutil.copyfile(file["src"], file["tgt"])
             else:
