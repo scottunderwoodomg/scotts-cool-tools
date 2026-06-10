@@ -9,14 +9,10 @@ from config_loader import get_path
 
 
 """
-A simple tool to automate the process of saving images from Flickr.  Currently takes any Flickr 
-    image url and saved the highest resolution version of that image available to a local 
-    directory of your choosing.
+Info goes here
 
 Potential future improvements:
-- TODO: Make a standard "tool" class that all of the other tools draw from
-    put in lib/
-- TODO: Fold drive consolidator into this?
+
 """
 
 
