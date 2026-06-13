@@ -1,0 +1,1 @@
+Disclosure, unlike the rest of scotts cool tools, gazette was collaboratively developed with genai as a learning project.
