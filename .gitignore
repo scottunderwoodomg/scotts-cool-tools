@@ -163,3 +163,4 @@ cython_debug/
 
 config.json
 .DS_Store
+tools/gazette/config/gazette_config.py

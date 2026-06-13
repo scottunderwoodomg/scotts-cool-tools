@@ -5,46 +5,22 @@ from datetime import datetime, timezone
 import os
 
 from config_loader import get_path
+from config.gazette_config import gazette_config
 
 
 
 # ─────────────────────────────────────────────
-
 class RssPuller():
     def __init__(self):
         self.sct_home = get_path("sct_home")
         self.script_dir  = get_path("file_save_dir")
-        # self.source_dir = source_dir
-        # self.target_dir = os.path.join(os.getenv("HOME"), target_dir)
-        # self.retain_source = retain_source
-        # self.ignore_patterns = [".DS_Store"]  # Placeholder solution
 
-        #self.pattern_match = pattern_match
-        # ─────────────────────────────────────────────
-        # CONFIGURATION — edit these three variables
-        # ─────────────────────────────────────────────
+        self.rss_feeds = gazette_config["feeds"]
 
-        # Add as many feed URLs as you like.
-        # Single feed example  : rss_feeds = ["https://feeds.bbci.co.uk/news/rss.xml"]
-        # Multiple feeds example:
-        self.rss_feeds = [
-            "https://gothamist.com/feed",
-            #"https://www.nydailynews.com/arc/outboundfeeds/rss/section/new-york/range/display_date/now-5d/now/?outputType=xml&size=50",
-            #"https://www.nydailynews.com/arc/outboundfeeds/rss/section/news_politics_new-york-elections-government/range/display_date/now-5d/now/?outputType=xml&size=50"
-            "http://www.ny1.com/services/contentfeed.nyc%7Call-boroughs%7Cnews.landing.rss",
-            "http://www.ny1.com/services/contentfeed.nyc%7Call-boroughs%7Cnews%7Ctransit.landing.rss",
-            "http://www.ny1.com/services/contentfeed.nyc%7Call-boroughs%7Cnews%7Ceducation.landing.rss",
-            "http://www.ny1.com/services/contentfeed.nyc%7Cbrooklyn.hero.rss",
-            "http://www.ny1.com/services/contentfeed.nyc%7Call-boroughs%7Cweather%7Cweather-blogs.hero.rss"
-            "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-            "https://nypost.com/feed/"
-        ]
-
-        self.start_date = "2026-06-07"  # YYYY-MM-DD
-        self.end_date   = "2026-06-08"  # YYYY-MM-DD
+        self.start_date = gazette_config["start_date"]  # YYYY-MM-DD
+        self.end_date   = gazette_config["end_date"]  # YYYY-MM-DD
 
     def run_rss_puller(self):
-        """Runs the following:"""
         self.main()
 
 

@@ -1,0 +1,28 @@
+from config_loader import get_path
+from datetime import date, timedelta
+
+gazette_config = {
+    # ── Puller settings ───────────────────────────
+    "feeds": [
+        "rss_url_1",
+        "rss_url_2",
+    ],
+    "start_date": (date.today() - timedelta(days=1)).strftime(
+        "%Y-%m-%d"
+    ),  # Defaults to yesterday's date in YYYY-MM-DD format
+    "end_date": date.today().strftime(
+        "%Y-%m-%d"
+    ),  # Defaults to today's date in YYYY-MM-DD format
+    
+    # ── Summarizer settings ───────────────────────
+    "model": "model name",  # your claude model of choice, e.g. claude-haiku-4-5-20251001
+    # Interests filter: List any topics you care about. Only articles that are relevant to at least 
+    #   one of these interests will be included in the digest. Set to an empty list [] to include 
+    #   ALL articles regardless of topic.
+    "interests": ["list", "of", "interest", "keywords"],
+    
+    # ── File paths ────────────────────────────────
+    "latest_output_file": f"{get_path("file_save_dir")}/latest_rss_output.txt",  # the last file written by rss_puller.py
+    "output_file": f"{get_path("file_save_dir")}/rss_output.txt",  # written by rss_puller.py
+    "summary_file": "rss_summary.txt",  # written by rss_summarizer.py
+}

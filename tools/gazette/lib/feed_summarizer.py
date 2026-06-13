@@ -4,6 +4,7 @@ from datetime import datetime
 
 from config_loader import load_config
 from config_loader import get_path
+from config.gazette_config import gazette_config
 
 
 class FeedSummarizer():
@@ -12,40 +13,17 @@ class FeedSummarizer():
         # CONFIGURATION — edit these variables
         # ─────────────────────────────────────────────
         self.ANTHROPIC_API_KEY = load_config()["ANTHROPIC_API_KEY"]
-        self.MODEL = load_config()["ANTHROPIC_MODEL"]
-        # Your Anthropic API key.
-        # Option A (recommended): set it as an environment variable:
-        #   export ANTHROPIC_API_KEY="sk-ant-..."
-        # Option B: paste it directly here (avoid committing to source control):
-
+        self.MODEL = gazette_config["model"]
 
         # Interests filter.
         # List any topics you care about. Only articles that are relevant to at least
         # one of these interests will be included in the digest.
         # Set to an empty list [] to include ALL articles regardless of topic.
-        #
-        # Examples:
-        #   INTERESTS = ["sports", "climate change", "schools"]
-        #   INTERESTS = ["AI", "technology", "startups"]
-        #   INTERESTS = []   ← disables filtering; summarise everything
-        self.INTERESTS = [
-            "transit",
-            "SoHo",
-            #"Lower East Side",
-            "Clinton Hill",
-            "Fort Green",
-            "Elementry School",
-            "Family Activities",
-            "Rain",
-            "Extreme Weather",
-            "Crime in Clinton Hill specifically",
-            "11205",
-            "PS-11"
-        ]
+        self.INTERESTS = gazette_config["interests"]
 
         # File paths (default: same directory as this script)
         self.SCRIPT_DIR   = get_path("file_save_dir")
-        self.INPUT_FILE   = os.path.join(self.SCRIPT_DIR, "rss_output.txt")
+        self.INPUT_FILE   = os.path.join(self.SCRIPT_DIR, "latest_rss_output.txt")
         self.OUTPUT_FILE  = os.path.join(self.SCRIPT_DIR, "rss_summary.txt")
 
     # ─────────────────────────────────────────────
