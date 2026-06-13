@@ -8,17 +8,25 @@ from config_loader import get_path
 from config.gazette_config import gazette_config
 
 
-
 # ─────────────────────────────────────────────
 class RssPuller():
-    def __init__(self):
+    def __init__(self, groups=None):
         self.sct_home = get_path("sct_home")
         self.script_dir  = get_path("file_save_dir")
 
         self.rss_feeds = gazette_config["feeds"]
-
         self.start_date = gazette_config["start_date"]  # YYYY-MM-DD
         self.end_date   = gazette_config["end_date"]  # YYYY-MM-DD
+
+        # If specific groups passed in, validate and use them; otherwise run all
+        all_groups = list(self.rss_feeds.keys())
+        if groups:
+            invalid = [g for g in groups if g not in all_groups]
+            if invalid:
+                raise ValueError(f"Unknown group(s): {invalid}. Available: {all_groups}")
+            self.active_groups = groups
+        else:
+            self.active_groups = all_groups
 
     def run_rss_puller(self):
         self.main()
@@ -76,47 +84,56 @@ class RssPuller():
         return lines
 
 
-    def write_output(self, all_articles, feeds, start, end):
-        """Write all collected articles to rss_output.txt, grouped by feed."""
+    def write_output(self, all_articles_by_group, feeds_by_group, start, end):
         output_path = os.path.join(self.script_dir, "rss_output.txt")
 
-        # Group by feed URL, preserving order
-        by_feed = {url: [] for url in feeds}
-        for pub_dt, entry, feed_url in all_articles:
-            by_feed[feed_url].append((pub_dt, entry))
+        total_articles = sum(len(a) for a in all_articles_by_group.values())
+        total_feeds    = sum(len(f) for f in feeds_by_group.values())
 
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("=" * 60 + "\n")
             f.write("RSS ARTICLE PULL\n")
             f.write("=" * 60 + "\n")
-            f.write(f"Feeds     : {len(feeds)}\n")
+            f.write(f"Groups    : {len(feeds_by_group)}\n")
+            f.write(f"Feeds     : {total_feeds}\n")
             f.write(f"Date range: {start} to {end}\n")
-            f.write(f"Articles  : {len(all_articles)} total\n")
+            f.write(f"Articles  : {total_articles} total\n")
             f.write(f"Generated : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 60 + "\n")
 
             global_index = 1
 
-            for feed_url in feeds:
-                articles = by_feed[feed_url]
-                f.write(f"\n{'─' * 60}\n")
-                f.write(f"FEED: {feed_url}\n")
-                f.write(f"Articles in range: {len(articles)}\n")
-                f.write(f"{'─' * 60}\n\n")
+            for group_name, feeds in feeds_by_group.items():
+                group_articles = all_articles_by_group[group_name]
 
-                if not articles:
-                    f.write("No articles found in the specified date range.\n\n")
-                    continue
+                f.write(f"\n{'█' * 60}\n")
+                f.write(f"GROUP: {group_name}\n")
+                f.write(f"Articles: {len(group_articles)}\n")
+                f.write(f"{'█' * 60}\n")
 
-                for pub_dt, entry in articles:
-                    f.write(f"[{global_index}] {entry.get('title', 'No title')}\n")
-                    f.write(f"    Published : {pub_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-                    f.write(f"    Link      : {entry.get('link', 'N/A')}\n")
-                    summary_lines = self.format_summary(entry)
-                    for ln in summary_lines:
-                        f.write(f"    {ln}\n")
-                    f.write("\n")
-                    global_index += 1
+                by_feed = {url: [] for url in feeds}
+                for pub_dt, entry, feed_url in group_articles:
+                    by_feed[feed_url].append((pub_dt, entry))
+
+                for feed_url in feeds:
+                    articles = by_feed[feed_url]
+                    f.write(f"\n{'─' * 60}\n")
+                    f.write(f"FEED: {feed_url}\n")
+                    f.write(f"Articles in range: {len(articles)}\n")
+                    f.write(f"{'─' * 60}\n\n")
+
+                    if not articles:
+                        f.write("No articles found in the specified date range.\n\n")
+                        continue
+
+                    for pub_dt, entry in articles:
+                        f.write(f"[{global_index}] {entry.get('title', 'No title')}\n")
+                        f.write(f"    Published : {pub_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+                        f.write(f"    Link      : {entry.get('link', 'N/A')}\n")
+                        for ln in self.format_summary(entry):
+                            f.write(f"    {ln}\n")
+                        f.write("\n")
+                        global_index += 1
 
         return output_path
 
@@ -129,25 +146,33 @@ class RssPuller():
         start_dt = self.parse_date(self.start_date)
         end_dt   = self.parse_date(self.end_date).replace(hour=23, minute=59, second=59)
 
-        print(f"Pulling {len(self.rss_feeds)} feed(s) from {self.start_date} to {self.end_date}…\n")
+        print(f"Pulling {len(self.active_groups)} group(s) from {self.start_date} to {self.end_date}…\n")
 
-        all_articles = []
-        errors       = []
+        all_articles_by_group = {}
+        feeds_by_group        = {}
+        errors                = []
 
-        for url in self.rss_feeds:
-            try:
-                matched = self.pull_articles(url, start_dt, end_dt)
-                all_articles.extend(matched)
-            except ValueError as e:
-                print(f"  WARNING: Skipping feed — {e}")
-                errors.append((url, str(e)))
+        for group_name in self.active_groups:
+            urls = self.rss_feeds[group_name]
+            feeds_by_group[group_name]        = urls
+            all_articles_by_group[group_name] = []
 
-        # Sort everything chronologically across all feeds
-        all_articles.sort(key=lambda x: x[0])
+            print(f"Group: {group_name} ({len(urls)} feed(s))")
+            for url in urls:
+                try:
+                    matched = self.pull_articles(url, start_dt, end_dt)
+                    all_articles_by_group[group_name].extend(matched)
+                except ValueError as e:
+                    print(f"  WARNING: Skipping feed — {e}")
+                    errors.append((url, str(e)))
 
-        output_path = self.write_output(all_articles, self.rss_feeds, self.start_date, self.end_date)
+            # Sort this group's articles chronologically
+            all_articles_by_group[group_name].sort(key=lambda x: x[0])
 
-        print(f"\nDone. {len(all_articles)} total article(s) written to: {output_path}")
+        output_path = self.write_output(all_articles_by_group, feeds_by_group, self.start_date, self.end_date)
+
+        total = sum(len(a) for a in all_articles_by_group.values())
+        print(f"\nDone. {total} total article(s) written to: {output_path}")
         if errors:
             print(f"\n{len(errors)} feed(s) had errors:")
             for url, err in errors:

@@ -29,6 +29,7 @@ class Gazette:
         """Runs the following:"""
         self.puller.run_rss_puller()
         if self.check_for_news(self.rss_pull_file, self.latest_rss_pull_file):
+            #return False
             self.summarizer.run_feed_summarizer()
         else:
             print("nothing new in the news")

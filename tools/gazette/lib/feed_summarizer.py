@@ -8,29 +8,45 @@ from config.gazette_config import gazette_config
 
 
 class FeedSummarizer():
-    def __init__(self):
-        # ─────────────────────────────────────────────
-        # CONFIGURATION — edit these variables
-        # ─────────────────────────────────────────────
+    def __init__(self, groups=None):
         self.ANTHROPIC_API_KEY = load_config()["ANTHROPIC_API_KEY"]
         self.MODEL = gazette_config["model"]
-
-        # Interests filter.
-        # List any topics you care about. Only articles that are relevant to at least
-        # one of these interests will be included in the digest.
-        # Set to an empty list [] to include ALL articles regardless of topic.
         self.INTERESTS = gazette_config["interests"]
 
-        # File paths (default: same directory as this script)
         self.SCRIPT_DIR   = get_path("file_save_dir")
         self.INPUT_FILE   = os.path.join(self.SCRIPT_DIR, "latest_rss_output.txt")
         self.OUTPUT_FILE  = os.path.join(self.SCRIPT_DIR, "rss_summary.txt")
+
+        all_groups = list(self.INTERESTS.keys())
+        if groups:
+            invalid = [g for g in groups if g not in all_groups]
+            if invalid:
+                raise ValueError(f"Unknown group(s): {invalid}. Available: {all_groups}")
+            self.active_groups = groups
+        else:
+            self.active_groups = all_groups
+
 
     # ─────────────────────────────────────────────
 
     def run_feed_summarizer(self):
         """Runs the following:"""
         self.main()
+
+    def parse_groups_from_file(self, raw_text):
+        """
+        Split raw article text into a dict of group_name: article_text
+        based on GROUP: dividers written by the puller.
+        """
+        import re
+        groups = {}
+        # Split on the group header lines
+        parts = re.split(r'█{60}\nGROUP: (.+?)\n.*?█{60}', raw_text, flags=re.DOTALL)
+        # parts will be: [pre-content, group1_name, group1_body, group2_name, group2_body, ...]
+        it = iter(parts[1:])  # skip the file header before the first group
+        for group_name, group_body in zip(it, it):
+            groups[group_name.strip()] = group_body.strip()
+        return groups
 
     def read_articles(self, path):
         """Read the rss_output.txt file and return its raw contents."""
@@ -126,8 +142,8 @@ class FeedSummarizer():
         return message.content[0].text
 
 
-    def write_summary(self, summary, interests, output_path):
-        """Write the summary to a text file."""
+    def write_summary(self, summaries_by_group, output_path):
+        """Write per-group summaries to a single output file."""
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("=" * 60 + "\n")
             f.write("RSS ARTICLE SUMMARY\n")
@@ -135,29 +151,29 @@ class FeedSummarizer():
             f.write(f"Generated : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Source    : {self.INPUT_FILE}\n")
             f.write(f"Model     : {self.MODEL}\n")
-            if interests:
-                f.write(f"Interests : {', '.join(interests)}\n")
-            else:
-                f.write("Interests : all articles (no filter applied)\n")
-            f.write("=" * 60 + "\n\n")
-            f.write(summary)
-            f.write("\n")
+            f.write(f"Groups    : {', '.join(summaries_by_group.keys())}\n")
+            f.write("=" * 60 + "\n")
+
+            for group_name, summary in summaries_by_group.items():
+                interests = self.INTERESTS.get(group_name, [])
+                f.write(f"\n{'█' * 60}\n")
+                f.write(f"GROUP: {group_name}\n")
+                f.write(f"Interests : {', '.join(interests) if interests else 'all articles'}\n")
+                f.write(f"{'█' * 60}\n\n")
+                f.write(summary)
+                f.write("\n")
 
 
     def main(self):
-        # ── Validate API key ──────────────────────────────────────────
         if not self.ANTHROPIC_API_KEY:
             print(
                 "ERROR: No Anthropic API key found.\n"
-                "Set the ANTHROPIC_API_KEY environment variable, or paste your key\n"
-                "directly into the ANTHROPIC_API_KEY variable at the top of this script.\n"
                 "Get a key at: https://console.anthropic.com/settings/keys"
             )
             return
 
         client = anthropic.Anthropic(api_key=self.ANTHROPIC_API_KEY)
 
-        # ── Read articles ─────────────────────────────────────────────
         print(f"Reading articles from: {self.INPUT_FILE}")
         try:
             raw_text = self.read_articles(self.INPUT_FILE)
@@ -165,36 +181,47 @@ class FeedSummarizer():
             print(f"ERROR: {e}")
             return
 
-        # ── Filter (if interests are defined) ─────────────────────────
-        try:
-            if self.INTERESTS:
-                print(f"Step 1/2 — Filtering by interests ({len(self.INTERESTS)} topic(s))…")
-                filtered_text = self.filter_articles(raw_text, self.INTERESTS, client, self.MODEL)
-                if filtered_text is None:
-                    print(
-                        "No articles matched your INTERESTS filter. "
-                        "Try broadening your topics or set INTERESTS = [] to include everything."
-                    )
-                    return
-            else:
-                print("No interests filter set — summarising all articles.")
-                filtered_text = raw_text
+        # Split file into per-group article blocks
+        groups_from_file = self.parse_groups_from_file(raw_text)
 
-            # ── Summarise ─────────────────────────────────────────────
-            step = "2/2" if self.INTERESTS else "1/1"
-            print(f"Step {step} — Summarising with Claude ({self.MODEL})…")
-            summary = self.summarise_articles(filtered_text, self.INTERESTS, client, self.MODEL)
+        summaries_by_group = {}
+
+        try:
+            for i, group_name in enumerate(self.active_groups, 1):
+                print(f"\nGroup {i}/{len(self.active_groups)}: {group_name}")
+
+                if group_name not in groups_from_file:
+                    print(f"  WARNING: Group '{group_name}' not found in input file, skipping.")
+                    continue
+
+                group_text    = groups_from_file[group_name]
+                interests     = self.INTERESTS.get(group_name, [])
+
+                if interests:
+                    print(f"  Step 1/2 — Filtering by interests ({len(interests)} topic(s))…")
+                    filtered_text = self.filter_articles(group_text, interests, client, self.MODEL)
+                    if filtered_text is None:
+                        print(f"  No articles matched interests for group '{group_name}', skipping.")
+                        continue
+                else:
+                    print(f"  No interests defined — summarising all articles in group.")
+                    filtered_text = group_text
+
+                step = "2/2" if interests else "1/1"
+                print(f"  Step {step} — Summarising…")
+                summary = self.summarise_articles(filtered_text, interests, client, self.MODEL)
+                summaries_by_group[group_name] = summary
 
         except anthropic.AuthenticationError:
-            print(
-                "ERROR: API key rejected. Check your key at:\n"
-                "https://console.anthropic.com/settings/keys"
-            )
+            print("ERROR: API key rejected. Check your key at: https://console.anthropic.com/settings/keys")
             return
         except anthropic.APIError as e:
             print(f"ERROR: Anthropic API error — {e}")
             return
 
-        # ── Write output ──────────────────────────────────────────────
-        self.write_summary(summary, self.INTERESTS, self.OUTPUT_FILE)
-        print(f"Done. Summary written to: {self.OUTPUT_FILE}")
+        if not summaries_by_group:
+            print("No summaries generated — no articles matched any group's interests.")
+            return
+
+        self.write_summary(summaries_by_group, self.OUTPUT_FILE)
+        print(f"\nDone. Summary written to: {self.OUTPUT_FILE}")
